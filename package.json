@@ -27,12 +27,6 @@
     "win": {
       "target": ["msi"],
       "icon": "build/icon.ico"
-    },
-    "linux": {
-      "target": ["deb"],
-      "category": "Utility",
-      "maintainer": "Jacob Yee <gnome2009123@gmail.com>",
-      "icon": "build/icon.png"
     }
   }
 }
