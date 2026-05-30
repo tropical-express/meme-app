@@ -1,6 +1,6 @@
 {
   "name": "meme-app",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Offline meme soundboard and image gallery",
   "main": "main.js",
   "author": "Jacob Yee <gnome2009123@gmail.com>",
