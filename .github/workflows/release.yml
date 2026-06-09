@@ -1,22 +1,16 @@
-name: Build and Release
+name: Release
 
 on:
   push:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  build:
+    runs-on: windows-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node
@@ -25,13 +19,27 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Build Linux .deb
-        run: npx electron-builder --linux deb
+      - name: Build app (MSI + ZIP)
+        run: npx electron-builder --win
 
-      - name: Upload Release
+      - name: Create SHA256 checksums
+        shell: pwsh
+        run: |
+          cd dist
+
+          Get-ChildItem -Recurse -File | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            "$($hash.Hash)  $($_.Name)" | Out-File -Append SHA256SUMS.txt
+          }
+
+      - name: Upload artifacts to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.deb
+            dist/*.msi
+            dist/*.zip
+            dist/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

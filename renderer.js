@@ -118,7 +118,8 @@ const images = [
   "static-assets-upload5772960293809558543.webp",
   "sus-hehe.gif",
   "youenterthewrongclassroom.jpg",
-  "y_tho_meme.png"
+  "y_tho_meme.png",
+  
 ];
 
 /* =======================
