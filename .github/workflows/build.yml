@@ -18,58 +18,75 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # -------------------------
+      # Setup Node (use modern version)
+      # -------------------------
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: "npm"
+          node-version: 24
+          cache: "pnpm"
 
-      - name: Install dependencies
-        run: npm install
+      # -------------------------
+      # Setup pnpm
+      # -------------------------
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
 
+      - name: Install pnpm dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      # -------------------------
+      # Build app
+      # -------------------------
       - name: Build app
-        run: npx electron-builder --publish=never
+        run: pnpm exec electron-builder --publish=never
 
-      # -----------------------------
-      # Generate SHA checksums
-      # -----------------------------
-
-      - name: Generate SHA256 + SHA512 (Windows)
+      # -------------------------
+      # Locate build outputs
+      # -------------------------
+      - name: Find build files (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          Get-FileHash release\*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  $($_.Path)" } > release\SHA256SUMS.txt
-          Get-FileHash release\*.exe -Algorithm SHA512 | ForEach-Object { "$($_.Hash)  $($_.Path)" } > release\SHA512SUMS.txt
+          Get-ChildItem -Recurse -Include *.exe | Select-Object -Expand FullName > files.txt
 
-      - name: Generate SHA256 + SHA512 (Linux)
+      - name: Find build files (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sha256sum release/*.AppImage > release/SHA256SUMS.txt
-          sha512sum release/*.AppImage > release/SHA512SUMS.txt
+          find . -type f \( -name "*.AppImage" -o -name "*.exe" \) > files.txt
 
-      # -----------------------------
-      # Upload artifacts
-      # -----------------------------
-
-      - name: Upload Windows build
+      # -------------------------
+      # Generate checksums
+      # -------------------------
+      - name: SHA checksums (Windows)
         if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: meme-app-windows
-          path: |
-            release/*.exe
-            release/SHA256SUMS.txt
-            release/SHA512SUMS.txt
+        shell: pwsh
+        run: |
+          $files = Get-Content files.txt
+          foreach ($f in $files) {
+            Get-FileHash $f -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  $f" } >> SHA256SUMS.txt
+            Get-FileHash $f -Algorithm SHA512 | ForEach-Object { "$($_.Hash)  $f" } >> SHA512SUMS.txt
+          }
 
-      - name: Upload Linux build
+      - name: SHA checksums (Linux)
         if: matrix.os == 'ubuntu-latest'
+        run: |
+          sha256sum $(cat files.txt) > SHA256SUMS.txt
+          sha512sum $(cat files.txt) > SHA512SUMS.txt
+
+      # -------------------------
+      # Upload artifacts
+      # -------------------------
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: meme-app-linux
+          name: build-${{ matrix.os }}
           path: |
-            release/*.AppImage
-            release/SHA256SUMS.txt
-            release/SHA512SUMS.txt
+            **/*.exe
+            **/*.AppImage
+            SHA256SUMS.txt
+            SHA512SUMS.txt
 
   release:
     needs: build
