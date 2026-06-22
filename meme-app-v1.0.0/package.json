@@ -1,0 +1,32 @@
+{
+  "name": "meme-app",
+  "version": "1.0.0",
+  "description": "Offline meme soundboard and image gallery",
+  "main": "main.js",
+  "author": "Jacob Yee <gnome2009123@gmail.com>",
+  "license": "GPL-3.0",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^36.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.jacob.memeapp",
+    "productName": "Meme App",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*"
+    ],
+    "icon": "build/icon.ico",
+    "win": {
+      "target": ["msi"],
+      "icon": "build/icon.ico"
+    }
+  }
+}
