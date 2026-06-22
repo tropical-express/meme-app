@@ -1,0 +1,93 @@
+name: Build Meme App
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build app
+        run: npx electron-builder --publish=never
+
+      # -----------------------------
+      # Generate SHA checksums
+      # -----------------------------
+
+      - name: Generate SHA256 + SHA512 (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Get-FileHash release\*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  $($_.Path)" } > release\SHA256SUMS.txt
+          Get-FileHash release\*.exe -Algorithm SHA512 | ForEach-Object { "$($_.Hash)  $($_.Path)" } > release\SHA512SUMS.txt
+
+      - name: Generate SHA256 + SHA512 (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sha256sum release/*.AppImage > release/SHA256SUMS.txt
+          sha512sum release/*.AppImage > release/SHA512SUMS.txt
+
+      # -----------------------------
+      # Upload artifacts
+      # -----------------------------
+
+      - name: Upload Windows build
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: meme-app-windows
+          path: |
+            release/*.exe
+            release/SHA256SUMS.txt
+            release/SHA512SUMS.txt
+
+      - name: Upload Linux build
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: meme-app-linux
+          path: |
+            release/*.AppImage
+            release/SHA256SUMS.txt
+            release/SHA512SUMS.txt
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Flatten files
+        run: find dist -type f -exec mv {} dist/ \; || true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
